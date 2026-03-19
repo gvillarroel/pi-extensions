@@ -1,0 +1,9 @@
+sources:
+  - id: github-core
+    type: github
+    enabled: true
+    owner: openai
+    repositories:
+      - openai-node
+    includeDiscussions: true
+    issueState: open

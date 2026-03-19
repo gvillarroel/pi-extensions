@@ -95,13 +95,13 @@ function getCapturedStateName(payload: UnknownPayload | undefined): string | und
 }
 
 function summarizePayload(payload: UnknownPayload | undefined): string {
-  if (!payload) return "sin payload";
+  if (!payload) return "no payload";
 
   const state = getCapturedStateName(payload);
-  if (state) return `estado=${state}`;
+  if (state) return `state=${state}`;
 
   const keys = Object.keys(payload);
-  if (!keys.length) return "payload vacio";
+  if (!keys.length) return "empty payload";
   return `keys=${keys.slice(0, 8).join(", ")}`;
 }
 
@@ -147,13 +147,13 @@ export default function registerStateCaptureReporter(pi: any) {
   }
 
   pi.registerCommand?.("captured_states", {
-    description: "Lista eventos soportados y cuales ya fueron observados",
+    description: "List supported events and the ones that were already observed",
     handler: async (_args: string, ctx: any) => {
       const message =
-        `Eventos registrados (${registered.size}): ${Array.from(registered).join(", ")}\n` +
-        `Eventos observados (${seen.size}): ${Array.from(seen).join(", ") || "ninguno"}`;
+        `Registered events (${registered.size}): ${Array.from(registered).join(", ")}\n` +
+        `Observed events (${seen.size}): ${Array.from(seen).join(", ") || "none"}`;
 
-      if (ctx?.ui?.notify) ctx.ui.notify("Consulta de eventos registrada en consola", "info");
+      if (ctx?.ui?.notify) ctx.ui.notify("Captured event report written to the console", "info");
       console.log(message);
     },
   });

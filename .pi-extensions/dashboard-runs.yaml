@@ -1,0 +1,18 @@
+version: 1
+updatedAt: 2026-03-19T01:50:16.211Z
+entries:
+  - itemId: "1563"
+    workflowId: fake-follow-up
+    status: passed
+    endedAt: 2026-03-19T01:50:16.210Z
+    summary: "Workflow result: passed"
+  - itemId: "1756"
+    workflowId: fake-follow-up
+    status: passed
+    endedAt: 2026-03-19T01:06:33.939Z
+    summary: "Workflow result: passed"
+  - itemId: "1738"
+    workflowId: fake-quick-triage
+    status: passed
+    endedAt: 2026-03-19T00:56:25.284Z
+    summary: "Workflow result: passed"

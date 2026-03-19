@@ -1,0 +1,29 @@
+workflows:
+  - id: github-triage
+    label: GitHub Triage
+    description: Review an incoming issue and run lightweight quality gates.
+    gates:
+      - requiredContextFields:
+          - item.title
+          - item.url
+    preHooks:
+      - name: announce-target
+        run: echo Reviewing {{item.title}}
+    steps:
+      - id: summarize-item
+        type: note
+        message: Summarize the issue and identify the next owner.
+      - id: validate-metadata
+        type: script
+        run: echo Metadata available for {{item.id}}
+    postHooks:
+      - name: publish-summary
+        run: echo Workflow completed for {{item.id}}
+
+  - id: clarify-concept
+    label: Clarify Concept
+    description: Prepare a concept clarification artifact for the knowledge base.
+    steps:
+      - id: write-outline
+        type: note
+        message: Draft a precise explanation with boundaries and examples.

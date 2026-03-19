@@ -1,0 +1,247 @@
+2026-03-18
+
+Completed
+- Hardened shared config loading in `src/shared/config.ts`.
+- Added deep merge semantics for object-shaped config while keeping arrays as replace-on-override.
+- Added schema validation for:
+  - `dashboard.sources.yaml`
+  - `workflows.yaml`
+  - `gates.yaml`
+  - `jobs.yaml`
+- Added actionable diagnostics with file path plus field path via `ConfigValidationError`.
+- Added YAML syntax diagnostics with file path via `YamlFileError`.
+- Fixed `knowledge_write` so relative target paths resolve against the Pi session `cwd` instead of `process.cwd()`.
+
+Tests added or expanded
+- `tests/config.test.ts`
+  - deep merge + array replacement behavior
+  - invalid schema diagnostics
+  - invalid YAML syntax diagnostics
+
+Executable verification completed
+- `scripts/verify-sdk.mjs`
+  - verified `/dashboard`
+  - verified `/dashboard_run`
+  - verified `/knowledge_scan`
+  - verified `/knowledge_write`
+  - verified `/job_run`
+  - verified state capture extension loading
+- `scripts/verify-cli.mjs`
+  - verified state capture extension loading
+  - verified `/knowledge_scan`
+  - verified malformed `jobs.yaml` produces actionable diagnostics
+
+Spike findings
+- Pi CLI command-path failures may still exit with code `0`; actionable diagnostics are emitted on stderr as `Extension error (command:...)`.
+- In the current Pi SDK build, `session.prompt("/command")` does not expose slash-command handler failures in a reliable programmatic form for negative-path assertions.
+- Because of that SDK behavior, malformed-config runtime verification is currently enforced by:
+  - Vitest coverage
+  - CLI smoke verification
+
+Validation run
+- `npm run check` -> passed
+- `npm run verify` -> passed
+
+Files added or changed in this slice
+- `src/shared/config-schema.ts`
+- `src/shared/config.ts`
+- `src/shared/yaml.ts`
+- `extensions/knowledge-distiller.ts`
+- `tests/config.test.ts`
+- `scripts/verify-sdk.mjs`
+- `scripts/verify-cli.mjs`
+- `README.md`
+- `docs/long-term-roadmap.md`
+
+Recommended next slice
+1. Add persistent scheduler history stored on disk with a stable YAML schema and bounded retention.
+2. Surface scheduler history in `/jobs` and add `/job_history <jobId>`.
+3. Add richer GitHub dashboard filters and workflow summary reporting in tests plus SDK verification.
+4. Start Jira connector design as fixture-first normalization work only after scheduler history is stable.
+
+Reactivation notes
+- Start by re-reading `docs/long-term-roadmap.md` and this file.
+- Re-run:
+  - `npm run check`
+  - `npm run verify`
+- If negative-path SDK verification is attempted again, inspect Pi SDK release notes first; do not assume `session.prompt("/command")` throws on handler failure.
+
+2026-03-18 (continued)
+
+Completed
+- Added persisted scheduler history in `src/shared/scheduler.ts`.
+- Standardized the runtime history file as `.pi-extensions/job-history.yaml`.
+- Added bounded history retention with a stable YAML shape:
+  - `version`
+  - `updatedAt`
+  - `entries`
+- Improved `/jobs` output so each job shows the last recorded result when available.
+- Added `/job_history [jobId]` to inspect persisted scheduler history.
+- Ensured script-backed and workflow-backed job runs both write history entries.
+
+Tests added or expanded
+- `tests/scheduler.test.ts`
+  - persistence of history after `/job_run` logic
+  - rendering of filtered history
+  - workflow-backed job execution and recorded failure summary
+
+Executable verification completed
+- `scripts/verify-sdk.mjs`
+  - verified persisted scheduler history file creation
+  - verified `/jobs` shows the last recorded result
+  - verified `/job_history manual`
+- `scripts/verify-cli.mjs`
+  - verified `/job_run manual`
+  - verified `/job_history manual`
+
+Validation run
+- `npm run check` -> passed
+- `npm run verify` -> passed
+
+Files added or changed in this slice
+- `src/shared/types.ts`
+- `src/shared/scheduler.ts`
+- `extensions/job-scheduler.ts`
+- `tests/scheduler.test.ts`
+- `scripts/verify-sdk.mjs`
+- `scripts/verify-cli.mjs`
+- `examples/job-history.yaml`
+- `README.md`
+- `docs/architecture.md`
+- `docs/long-term-roadmap.md`
+
+Recommended next slice
+1. Add `/jobs` filtering and explicit enable/disable commands.
+2. Add retry and timeout handling with persisted per-run metadata.
+3. Add richer GitHub dashboard filtering and recent workflow summaries.
+4. Keep Jira work fixture-first after dashboard GitHub filters are stable.
+
+2026-03-18 (continued again)
+
+Completed
+- Extended the dashboard item model with explicit `itemType` support for `issue` and `discussion`.
+- Added GitHub dashboard filters for:
+  - labels
+  - assignees
+  - statuses
+  - item types
+- Added persisted dashboard workflow summaries in `.pi-extensions/dashboard-runs.yaml`.
+- Updated `/dashboard` so each item can show the latest recorded workflow result.
+- Kept `/dashboard_run` writing summaries after each workflow execution.
+
+Tests added or expanded
+- `tests/dashboard.test.ts`
+  - normalized item type coverage
+  - assignee/status/item-type filters
+  - persisted workflow summary reload
+  - summary ordering behavior
+
+Executable verification completed
+- `scripts/verify-sdk.mjs`
+  - verified filtered dashboard listing
+  - verified normalized `itemType` rendering
+  - verified `/dashboard_run`
+  - verified persisted workflow summaries are shown by `/dashboard`
+
+Validation run
+- `npm run check` -> passed
+- `npm run verify` -> passed
+
+Files added or changed in this slice
+- `src/shared/types.ts`
+- `src/shared/config-schema.ts`
+- `src/shared/dashboard.ts`
+- `extensions/dashboard.ts`
+- `tests/dashboard.test.ts`
+- `scripts/verify-sdk.mjs`
+- `examples/dashboard.sources.yaml`
+- `README.md`
+- `docs/architecture.md`
+- `docs/long-term-roadmap.md`
+
+Recommended next slice
+1. Add `/jobs` filtering and explicit enable/disable commands.
+2. Add retry and timeout handling with persisted per-run metadata.
+3. Add GitHub rate limit and connector error reporting without breaking the whole dashboard.
+4. Add source-level dashboard workflow metadata before starting Jira normalization.
+
+2026-03-18 (interactive dashboard UX)
+
+Completed
+- Added automatic dashboard loading on `session_start` for interactive Pi sessions.
+- Added a dashboard widget rendered above the editor through `ctx.ui.setWidget(...)`.
+- Kept `/dashboard` as the explicit full refresh command and `/dashboard_run` now refreshes the widget after execution.
+
+Important behavior note
+- This automatic UI behavior is visible only in interactive Pi mode.
+- It will not appear with `-p` print mode because widget/status UI calls are not rendered there.
+
+Validation run
+- `npm run check` -> passed
+- `npm run verify` -> passed
+
+Files added or changed in this slice
+- `src/shared/types.ts`
+- `extensions/dashboard.ts`
+
+2026-03-18 (dashboard workflow picker)
+
+Completed
+- Added workflow selection after choosing an item in `/dashboard_panel`.
+- Workflow choices are now loaded from `workflows.yaml`.
+- Source-specific workflow restrictions now honor:
+  - `allowedWorkflowIds`
+  - `defaultWorkflowId`
+- Added optional custom prompt capture before execution.
+- The selected item plus `customPrompt` are now passed into workflow context.
+- `/dashboard_run` also accepts an optional trailing custom prompt for parity with the interactive path.
+
+Validation run
+- `npm run check` -> passed
+- `npm run verify` -> passed
+
+Files added or changed in this slice
+- `src/shared/types.ts`
+- `extensions/dashboard.ts`
+- `tests/dashboard.test.ts`
+- `examples/dashboard.sources.yaml`
+
+2026-03-18 (interactive dashboard panel)
+
+Completed
+- Upgraded the auto-loaded dashboard widget to a titled, color-aware panel in interactive TUI mode.
+- Added `/dashboard_panel` as an interactive dashboard browser.
+- Implemented keyboard navigation:
+  - `up` / `down`
+  - `pageUp` / `pageDown`
+  - `enter`
+  - `escape`
+- Selecting an item now writes a ready-to-use summary plus a suggested `/dashboard_run` command into the editor.
+
+Important behavior note
+- Terminal font size cannot be changed by the extension.
+- The implemented equivalent is a more compact and visually de-emphasized panel using TUI colors and a tighter layout.
+- This interactive panel is available only in interactive Pi mode, not with `-p`.
+
+Validation run
+- `npm run check` -> passed
+- `npm run verify` -> passed
+
+Files added or changed in this slice
+- `src/shared/types.ts`
+- `extensions/dashboard.ts`
+2026-03-18 21:49 - Dashboard panel workspace slice completed.
+- Replaced the old sequential dashboard picker with a single interactive 4-block workspace in extensions/dashboard.ts.
+- New layout: left yellow paginated item block with compact ids only, center detail block, right workflow block, bottom yellow controls/context bar.
+- Added focus switching across items/detail/workflows with left/right or tab, context switching with [ and ], paging with pageUp/pageDown, and workflow execution from the workflow block with enter.
+- Added fixed context lanes for GitHub issues, GitHub discussions, Jira, and Aha so the UI can expose future connectors before they are implemented.
+- Preserved custom prompt capture and workflow execution after selecting a workflow from the right-side block.
+- Added unit coverage for context grouping in tests/dashboard.test.ts.
+- Validation status: npm run check = passed; npm run verify = passed.
+2026-03-19 06:56 - Dashboard panel readability and focus contrast slice completed.
+- Increased active-block contrast in extensions/dashboard.ts so the focused panel uses a saturated highlighted header and stronger border treatment.
+- Simplified the center detail view to prioritize ticket title, compact header status/assignee line, and primary body text from raw issue metadata.
+- Removed low-signal placeholders like "none" from the detail layout; empty metadata is now omitted entirely.
+- Moved secondary metadata such as labels, repo, updated timestamp, last workflow summary, and URL to the end of the detail block.
+- Added test coverage for body-first detail rendering and omission of empty metadata in tests/dashboard.test.ts.
+- Validation status: npm run check = passed; npm run verify = passed.

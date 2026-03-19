@@ -1,0 +1,13 @@
+version: 1
+updatedAt: 2026-03-18T20:00:00.000Z
+entries:
+  - jobId: nightly-status
+    status: passed
+    startedAt: 2026-03-18T06:00:00.000Z
+    endedAt: 2026-03-18T06:00:03.000Z
+    summary: Workflow result: passed
+  - jobId: weekly-knowledge-review
+    status: skipped
+    startedAt: 2026-03-17T09:00:00.000Z
+    endedAt: 2026-03-17T09:00:00.000Z
+    summary: Job is disabled.

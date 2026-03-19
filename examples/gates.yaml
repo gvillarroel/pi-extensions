@@ -1,0 +1,11 @@
+gates:
+  - id: require-target-file
+    description: Target file is required before writing clarification output.
+    requiredContextFields:
+      - targetFile
+
+  - id: require-dashboard-item
+    description: Dashboard workflows require a selected item.
+    requiredContextFields:
+      - item.id
+      - item.source

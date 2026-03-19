@@ -1,0 +1,51 @@
+workflows:
+  - id: fake-quick-triage
+    label: Fake Quick Triage
+    description: Minimal fake workflow for dashboard selection tests.
+    gates:
+      - requiredContextFields:
+          - item.id
+          - item.title
+    steps:
+      - id: note-summary
+        type: note
+        message: |
+          Review {{item.title}} from {{item.repositoryOrBoard}}.
+          Use this fake workflow to verify dashboard selection only.
+      - id: echo-context
+        type: script
+        run: |
+          echo item={{item.id}}
+          echo title={{item.title}}
+          echo prompt={{customPrompt}}
+
+  - id: fake-issue-brief
+    label: Fake Issue Brief
+    description: Produces a lightweight brief using the selected item plus custom prompt.
+    steps:
+      - id: note-brief
+        type: note
+        message: |
+          Prepare a short brief for {{item.title}}.
+          Extra operator context: {{customPrompt}}
+      - id: echo-url
+        type: script
+        run: |
+          echo url={{item.url}}
+          echo labels={{item.labels}}
+
+  - id: fake-follow-up
+    label: Fake Follow Up
+    description: Simulates a follow-up workflow for testing the dashboard panel.
+    preHooks:
+      - name: announce
+        run: echo Starting fake follow-up for {{item.id}}
+    steps:
+      - id: note-follow-up
+        type: note
+        message: |
+          Ask for the next action on {{item.title}}.
+          Optional custom prompt: {{customPrompt}}
+      - id: echo-finish
+        type: script
+        run: echo finished={{item.id}}

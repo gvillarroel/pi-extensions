@@ -1,0 +1,47 @@
+{
+  "name": "pi-extensions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pi extensions for dashboard triage, knowledge distillation, and scheduled jobs.",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run build && npm run test",
+    "verify:sdk": "node ./scripts/verify-sdk.mjs",
+    "verify:cli": "node ./scripts/verify-cli.mjs",
+    "verify": "npm run verify:sdk && npm run verify:cli"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extensions",
+    "dashboard",
+    "knowledge-base",
+    "scheduler"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/dashboard.ts",
+      "./extensions/knowledge-distiller.ts",
+      "./extensions/job-scheduler.ts",
+      "./extensions/state-capture-reporter.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  },
+  "dependencies": {
+    "cron-parser": "^5.4.0",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

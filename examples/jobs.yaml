@@ -1,0 +1,19 @@
+jobs:
+  - id: nightly-status
+    label: Nightly Status Export
+    enabled: true
+    schedule: "0 6 * * *"
+    concurrency: forbid
+    target:
+      type: script
+      run: echo Nightly dashboard export
+
+  - id: weekly-knowledge-review
+    label: Weekly Knowledge Review
+    enabled: false
+    schedule: "0 9 * * 1"
+    target:
+      type: workflow
+      workflowId: clarify-concept
+      context:
+        concept: onboarding

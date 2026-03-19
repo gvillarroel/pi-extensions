@@ -1,0 +1,23 @@
+sources:
+  - id: github-core
+    type: github
+    enabled: true
+    owner: openai
+    repositories:
+      - openai-python
+      - openai-node
+    includeDiscussions: true
+    issueState: open
+    labels:
+      - bug
+      - enhancement
+    assignees:
+      - alice
+    statuses:
+      - open
+    itemTypes:
+      - issue
+      - discussion
+    defaultWorkflowId: github-triage
+    allowedWorkflowIds:
+      - github-triage
