@@ -1,6 +1,11 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { loadMergedYamlConfig } from "../src/shared/config.js";
 import { executeWorkflow } from "../src/shared/workflow.js";
+import { writeYamlFile } from "../src/shared/yaml.js";
 
 describe("executeWorkflow", () => {
   it("fails when a required field gate is missing", async () => {
@@ -42,5 +47,24 @@ describe("executeWorkflow", () => {
     expect(result.status).toBe("passed");
     expect(result.stepResults).toHaveLength(3);
     expect(result.artifacts.some((artifact) => artifact.content.includes("Review 123"))).toBe(true);
+  });
+
+  it("executes a bash-only workflow loaded from workflows.yaml", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-bash-workflow-run-"));
+    writeYamlFile(path.join(root, "workflows.yaml"), {
+      bashWorkflows: [
+        {
+          id: "bash-only",
+          label: "Bash Only",
+          bash: "echo bash-only-ok",
+        },
+      ],
+    });
+
+    const workflow = loadMergedYamlConfig<{ workflows?: Array<any> }>("workflows.yaml", { cwd: root }).workflows?.[0];
+    const result = await executeWorkflow(workflow, { cwd: root });
+
+    expect(result.status).toBe("passed");
+    expect(result.artifacts.some((artifact) => artifact.content.includes("bash-only-ok"))).toBe(true);
   });
 });

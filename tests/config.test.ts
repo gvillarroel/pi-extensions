@@ -90,4 +90,29 @@ describe("loadMergedYamlConfig", () => {
     expect(() => loadMergedYamlConfig("dashboard.sources.yaml", { cwd })).toThrowError(YamlFileError);
     expect(() => loadMergedYamlConfig("dashboard.sources.yaml", { cwd })).toThrowError(/dashboard\.sources\.yaml/);
   });
+
+  it("compiles bash-only workflow definitions into standard workflows", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-extensions-bash-workflows-"));
+    const cwd = path.join(root, "repo");
+    fs.mkdirSync(cwd, { recursive: true });
+
+    writeYamlFile(path.join(cwd, "workflows.yaml"), {
+      bashWorkflows: [
+        {
+          id: "quick-bash",
+          label: "Quick Bash",
+          bash: ["echo first", "echo second"],
+        },
+      ],
+    });
+
+    const config = loadMergedYamlConfig<{ workflows?: Array<{ id: string; steps: Array<{ run?: string }> }> }>(
+      "workflows.yaml",
+      { cwd },
+    );
+
+    expect(config.workflows).toHaveLength(1);
+    expect(config.workflows?.[0]?.id).toBe("quick-bash");
+    expect(config.workflows?.[0]?.steps.map((step) => step.run)).toEqual(["echo first", "echo second"]);
+  });
 });

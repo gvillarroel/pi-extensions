@@ -4,11 +4,13 @@ import {
   loadDashboardItems,
   recordDashboardRunSummary,
 } from "../src/shared/dashboard.js";
+import { asRecord } from "../src/shared/paths.js";
 import type {
   DashboardConfigFile,
   DashboardItem,
   DashboardSourceDefinition,
   ExtensionContext,
+  PiExtensionHost,
   WorkflowConfigFile,
   WorkflowDefinition,
 } from "../src/shared/types.js";
@@ -21,6 +23,7 @@ const DEFAULT_WIDGET_LIMIT = 6;
 const PANEL_ITEM_PAGE_SIZE = 12;
 const PANEL_WORKFLOW_PAGE_SIZE = 10;
 const DETAIL_BODY_LINE_LIMIT = 8;
+const ITEMS_CACHE_TTL_MS = 60_000;
 
 type DashboardPanelContextId = "github-issues" | "github-discussions" | "jira" | "aha";
 type DashboardPanelFocus = "items" | "detail" | "workflows";
@@ -130,10 +133,6 @@ function formatPanelItemId(item: DashboardItem): string {
   }
 
   return item.id;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
 }
 
 function asString(value: unknown): string | undefined {
@@ -672,7 +671,7 @@ function createDashboardWidgetComponent(items: DashboardItem[], cwd?: string) {
 
       const lines = items.slice(0, DEFAULT_WIDGET_LIMIT).map((item) => {
         const lastRun = getLatestDashboardRunSummary(item.id, cwd);
-        const kind = item.itemType === "issue" ? theme.fg("warning", "I") : theme.fg("success", "D");
+        const kind = item.itemType === "issue" ? theme.fg("warning", "I") : item.itemType === "feature" ? theme.fg("accent", "F") : theme.fg("success", "D");
         const suffix = lastRun ? theme.fg("dim", ` ${lastRun.workflowId}:${lastRun.status}`) : "";
         return truncateToWidth(`${kind} ${item.repositoryOrBoard}#${item.id} ${item.title}${suffix}`, width);
       });
@@ -740,6 +739,27 @@ export async function listDashboardItems(cwd?: string): Promise<DashboardItem[]>
   return loadDashboardItems(config);
 }
 
+let cachedItems: DashboardItem[] | undefined;
+let cachedItemsCwd: string | undefined;
+let cachedItemsTimestamp = 0;
+
+async function listDashboardItemsCached(cwd?: string, forceRefresh = false): Promise<DashboardItem[]> {
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    cachedItems &&
+    cachedItemsCwd === cwd &&
+    now - cachedItemsTimestamp < ITEMS_CACHE_TTL_MS
+  ) {
+    return cachedItems;
+  }
+
+  cachedItems = await listDashboardItems(cwd);
+  cachedItemsCwd = cwd;
+  cachedItemsTimestamp = now;
+  return cachedItems;
+}
+
 async function refreshDashboardSurface(ctx: ExtensionContext | undefined): Promise<void> {
   if (!ctx?.hasUI) {
     return;
@@ -747,7 +767,7 @@ async function refreshDashboardSurface(ctx: ExtensionContext | undefined): Promi
 
   try {
     ctx.ui?.setStatus?.(STATUS_SLOT, "Loading dashboard...");
-    const items = await listDashboardItems(ctx.cwd);
+    const items = await listDashboardItemsCached(ctx.cwd);
     ctx.ui?.setWidget?.(WIDGET_SLOT, createDashboardWidgetComponent(items, ctx.cwd), { placement: "aboveEditor" });
     ctx.ui?.setStatus?.(STATUS_SLOT, `Dashboard: ${items.length} items`);
   } catch (error) {
@@ -787,13 +807,13 @@ export async function runDashboardWorkflow(
   return JSON.stringify(result, null, 2);
 }
 
-export default function registerDashboardExtension(pi: any) {
+export default function registerDashboardExtension(pi: PiExtensionHost) {
   // Next expected extension point: register Jira and AHA connectors here without changing workflow APIs.
-  pi.on?.("session_start", async (_event: unknown, ctx: ExtensionContext) => {
+  pi.on("session_start", async (_event: unknown, ctx: ExtensionContext) => {
     await refreshDashboardSurface(ctx);
   });
 
-  pi.registerCommand?.("dashboard", {
+  pi.registerCommand("dashboard", {
     description: "Load dashboard items from configured sources.",
     handler: async (_args: string, ctx: ExtensionContext) => {
       const items = await listDashboardItems(ctx.cwd);
@@ -806,7 +826,7 @@ export default function registerDashboardExtension(pi: any) {
     },
   });
 
-  pi.registerCommand?.("dashboard_panel", {
+  pi.registerCommand("dashboard_panel", {
     description: "Open an interactive dashboard workspace with contexts, details, and workflows.",
     handler: async (_args: string, ctx: ExtensionContext) => {
       if (!ctx.hasUI || !ctx.ui?.custom) {
@@ -851,7 +871,7 @@ export default function registerDashboardExtension(pi: any) {
     },
   });
 
-  pi.registerCommand?.("dashboard_run", {
+  pi.registerCommand("dashboard_run", {
     description: "Run a workflow against a selected dashboard item using /dashboard_run <workflowId> <itemId> [custom prompt].",
     handler: async (args: string, ctx: ExtensionContext) => {
       const [workflowId, itemId, ...promptParts] = args.split(/\s+/).filter(Boolean);
@@ -874,7 +894,7 @@ export default function registerDashboardExtension(pi: any) {
     },
   });
 
-  pi.registerTool?.({
+  pi.registerTool({
     name: "dashboard_list_items",
     description: "List dashboard items from configured sources.",
     parameters: {

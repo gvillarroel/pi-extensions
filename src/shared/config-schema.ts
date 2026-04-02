@@ -1,4 +1,5 @@
 import type {
+  BashWorkflowDefinition,
   DashboardConfigFile,
   GateDefinition,
   GatesConfigFile,
@@ -81,6 +82,62 @@ function validateGate(gate: unknown, fieldPath: string, issues: ConfigValidation
       message: "Gate must define either 'run' or 'requiredContextFields'.",
     });
   }
+
+  return true;
+}
+
+function validateBashWorkflow(
+  workflow: unknown,
+  fieldPath: string,
+  issues: ConfigValidationIssue[],
+): workflow is BashWorkflowDefinition {
+  if (!isRecord(workflow)) {
+    pushTypeIssue(issues, fieldPath, "object", workflow);
+    return false;
+  }
+
+  if (typeof workflow.id !== "string" || !workflow.id.trim()) {
+    issues.push({
+      path: `${fieldPath}.id`,
+      message: "Bash workflow 'id' must be a non-empty string.",
+    });
+  }
+
+  if (typeof workflow.label !== "string" || !workflow.label.trim()) {
+    issues.push({
+      path: `${fieldPath}.label`,
+      message: "Bash workflow 'label' must be a non-empty string.",
+    });
+  }
+
+  expectOptionalString(issues, `${fieldPath}.description`, workflow.description);
+
+  if (typeof workflow.bash === "string") {
+    if (!workflow.bash.trim()) {
+      issues.push({
+        path: `${fieldPath}.bash`,
+        message: "Bash workflow 'bash' must be a non-empty string or a non-empty array of strings.",
+      });
+    }
+    return true;
+  }
+
+  if (!Array.isArray(workflow.bash) || workflow.bash.length === 0) {
+    issues.push({
+      path: `${fieldPath}.bash`,
+      message: "Bash workflow 'bash' must be a non-empty string or a non-empty array of strings.",
+    });
+    return false;
+  }
+
+  workflow.bash.forEach((command, index) => {
+    if (typeof command !== "string" || !command.trim()) {
+      issues.push({
+        path: `${fieldPath}.bash[${index}]`,
+        message: "Bash workflow commands must be non-empty strings.",
+      });
+    }
+  });
 
   return true;
 }
@@ -339,19 +396,19 @@ export function validateDashboardConfig(
     expectOptionalString(issues, `${sourcePath}.defaultWorkflowId`, source.defaultWorkflowId);
     expectStringArray(issues, `${sourcePath}.allowedWorkflowIds`, source.allowedWorkflowIds);
 
-    if (
-      source.issueState !== undefined &&
-      source.issueState !== "open" &&
-      source.issueState !== "closed" &&
-      source.issueState !== "all"
-    ) {
-      issues.push({
-        path: `${sourcePath}.issueState`,
-        message: "GitHub source 'issueState' must be one of: open, closed, all.",
-      });
-    }
-
     if (source.type === "github") {
+      if (
+        source.issueState !== undefined &&
+        source.issueState !== "open" &&
+        source.issueState !== "closed" &&
+        source.issueState !== "all"
+      ) {
+        issues.push({
+          path: `${sourcePath}.issueState`,
+          message: "GitHub source 'issueState' must be one of: open, closed, all.",
+        });
+      }
+
       if (typeof source.owner !== "string" || !source.owner.trim()) {
         issues.push({
           path: `${sourcePath}.owner`,
@@ -369,13 +426,55 @@ export function validateDashboardConfig(
 
     if (Array.isArray(source.itemTypes)) {
       source.itemTypes.forEach((itemType, itemTypeIndex) => {
-        if (itemType !== "issue" && itemType !== "discussion") {
+        if (itemType !== "issue" && itemType !== "discussion" && itemType !== "feature") {
           issues.push({
             path: `${sourcePath}.itemTypes[${itemTypeIndex}]`,
-            message: "Dashboard source 'itemTypes' entries must be either 'issue' or 'discussion'.",
+            message: "Dashboard source 'itemTypes' entries must be one of: 'issue', 'discussion', 'feature'.",
           });
         }
       });
+    }
+
+    if (source.type === "jira") {
+      if (typeof source.baseUrl !== "string" || !source.baseUrl.trim()) {
+        issues.push({
+          path: `${sourcePath}.baseUrl`,
+          message: "Jira sources must define a non-empty 'baseUrl'.",
+        });
+      }
+
+      if (
+        source.jql === undefined &&
+        (typeof source.project !== "string" || !source.project.trim())
+      ) {
+        issues.push({
+          path: `${sourcePath}.project`,
+          message: "Jira sources must define either 'project' or 'jql'.",
+        });
+      }
+
+      expectOptionalString(issues, `${sourcePath}.jql`, source.jql);
+      expectOptionalString(issues, `${sourcePath}.project`, source.project);
+      expectOptionalString(issues, `${sourcePath}.usernameEnvVar`, source.usernameEnvVar);
+      expectOptionalNumber(issues, `${sourcePath}.maxResults`, source.maxResults);
+    }
+
+    if (source.type === "aha") {
+      if (typeof source.subdomain !== "string" || !source.subdomain.trim()) {
+        issues.push({
+          path: `${sourcePath}.subdomain`,
+          message: "AHA sources must define a non-empty 'subdomain'.",
+        });
+      }
+
+      if (typeof source.product !== "string" || !source.product.trim()) {
+        issues.push({
+          path: `${sourcePath}.product`,
+          message: "AHA sources must define a non-empty 'product'.",
+        });
+      }
+
+      expectOptionalNumber(issues, `${sourcePath}.maxResults`, source.maxResults);
     }
   });
 
@@ -392,17 +491,30 @@ export function validateWorkflowConfig(
   }
 
   if (value.workflows === undefined) {
-    return true;
+    if (value.bashWorkflows === undefined) {
+      return true;
+    }
+  } else {
+    if (!Array.isArray(value.workflows)) {
+      pushTypeIssue(issues, "workflows", "array", value.workflows);
+      return false;
+    }
+
+    value.workflows.forEach((workflow, index) => {
+      validateWorkflow(workflow, `workflows[${index}]`, issues);
+    });
   }
 
-  if (!Array.isArray(value.workflows)) {
-    pushTypeIssue(issues, "workflows", "array", value.workflows);
-    return false;
-  }
+  if (value.bashWorkflows !== undefined) {
+    if (!Array.isArray(value.bashWorkflows)) {
+      pushTypeIssue(issues, "bashWorkflows", "array", value.bashWorkflows);
+      return false;
+    }
 
-  value.workflows.forEach((workflow, index) => {
-    validateWorkflow(workflow, `workflows[${index}]`, issues);
-  });
+    value.bashWorkflows.forEach((workflow, index) => {
+      validateBashWorkflow(workflow, `bashWorkflows[${index}]`, issues);
+    });
+  }
 
   return true;
 }

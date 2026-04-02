@@ -27,3 +27,11 @@ workflows:
       - id: write-outline
         type: note
         message: Draft a precise explanation with boundaries and examples.
+
+bashWorkflows:
+  - id: quick-bash-review
+    label: Quick Bash Review
+    description: Minimal workflow syntax for custom bash-only automation.
+    bash:
+      - echo Starting quick review for {{item.id}}
+      - echo Opening {{item.url}}

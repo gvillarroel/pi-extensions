@@ -245,3 +245,31 @@ Files added or changed in this slice
 - Moved secondary metadata such as labels, repo, updated timestamp, last workflow summary, and URL to the end of the detail block.
 - Added test coverage for body-first detail rendering and omission of empty metadata in tests/dashboard.test.ts.
 - Validation status: npm run check = passed; npm run verify = passed.
+
+2026-03-25 - Jira and AHA dashboard connectors completed.
+- Added Jira connector in src/shared/dashboard.ts that fetches issues via REST API v3 with Basic auth.
+  - Supports project-based queries and explicit JQL override.
+  - Normalizes Jira issues into DashboardItem with status, assignee, labels (including type: and priority: prefixes), and web URL.
+  - Pagination via nextPageToken.
+  - Credentials via JIRA_USERNAME and JIRA_TOKEN env vars (configurable via usernameEnvVar/tokenEnvVar).
+- Added AHA connector in src/shared/dashboard.ts that fetches product features via API v1.
+  - Normalizes AHA features into DashboardItem with workflow_status, assigned_to_user, tags, and web URL.
+  - Credentials via AHA_TOKEN env var (configurable via tokenEnvVar).
+  - Uses subdomain and product fields for API routing.
+- Extended DashboardItem.itemType to include "feature" for AHA items.
+- Extended DashboardSourceDefinition with Jira-specific fields (baseUrl, jql, project, usernameEnvVar, maxResults) and AHA-specific fields (product, subdomain).
+- Added independent connector error handling: one failing source does not block other sources from loading. Errors are logged to stderr.
+- Updated config-schema.ts to validate Jira and AHA source types with required fields.
+- Updated dashboard.ts widget to show "F" marker for feature items alongside "I" and "D".
+- Added 7 new tests in tests/dashboard.test.ts:
+  - Jira issue normalization from mocked API
+  - AHA feature normalization from mocked API
+  - Jira status filter application
+  - Missing Jira credentials returns empty
+  - Missing AHA token returns empty
+  - Connector failure isolation (Jira fails, GitHub continues)
+  - Jira and AHA items grouped into correct panel contexts
+- Updated examples/dashboard.sources.yaml with Jira and AHA example configurations.
+- Updated README.md with connector documentation for all three source types.
+- Updated docs/long-term-roadmap.md with current known limitations and next execution queue.
+- Validation status: npm run check = passed (52 tests, 0 failures).

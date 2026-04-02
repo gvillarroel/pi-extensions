@@ -9,6 +9,7 @@ import {
   loadDashboardItems,
   recordDashboardRunSummary,
 } from "../src/shared/dashboard.js";
+import type { DashboardItem } from "../src/shared/types.js";
 import {
   buildDashboardPanelContexts,
   buildDetailLines,
@@ -249,5 +250,346 @@ describe("loadDashboardItems", () => {
     expect(lines).toContain("Primary summary line");
     expect(lines).toContain("Second paragraph.");
     expect(lines.join("\n")).not.toContain("none");
+  });
+
+  it("loads normalized Jira issues from mocked API", async () => {
+    global.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/rest/api/3/search")) {
+        return new Response(
+          JSON.stringify({
+            issues: [
+              {
+                key: "PROJ-101",
+                id: "10001",
+                fields: {
+                  summary: "Fix login timeout",
+                  status: { name: "In Progress" },
+                  assignee: { displayName: "Carol" },
+                  labels: ["backend"],
+                  priority: { name: "High" },
+                  issuetype: { name: "Bug" },
+                  updated: "2026-03-20T14:00:00.000Z",
+                  description: { type: "doc", content: [] },
+                },
+              },
+              {
+                key: "PROJ-102",
+                id: "10002",
+                fields: {
+                  summary: "Add metrics endpoint",
+                  status: { name: "To Do" },
+                  assignee: null,
+                  labels: [],
+                  priority: { name: "Medium" },
+                  issuetype: { name: "Task" },
+                  updated: "2026-03-19T10:00:00.000Z",
+                },
+              },
+            ],
+            total: 2,
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    }) as typeof fetch;
+
+    process.env.JIRA_USERNAME = "user@example.com";
+    process.env.JIRA_TOKEN = "jira-test-token";
+
+    try {
+      const items = await loadDashboardItems({
+        sources: [
+          {
+            id: "jira-main",
+            type: "jira",
+            enabled: true,
+            baseUrl: "https://mycompany.atlassian.net",
+            project: "PROJ",
+          },
+        ],
+      });
+
+      expect(items).toHaveLength(2);
+      expect(items[0].id).toBe("PROJ-101");
+      expect(items[0].itemType).toBe("issue");
+      expect(items[0].status).toBe("In Progress");
+      expect(items[0].assignees).toEqual(["Carol"]);
+      expect(items[0].labels).toContain("type:Bug");
+      expect(items[0].labels).toContain("priority:High");
+      expect(items[0].labels).toContain("backend");
+      expect(items[0].url).toBe("https://mycompany.atlassian.net/browse/PROJ-101");
+
+      expect(items[1].id).toBe("PROJ-102");
+      expect(items[1].assignees).toEqual([]);
+    } finally {
+      delete process.env.JIRA_USERNAME;
+      delete process.env.JIRA_TOKEN;
+    }
+  });
+
+  it("loads normalized AHA features from mocked API", async () => {
+    global.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("/api/v1/products/")) {
+        return new Response(
+          JSON.stringify({
+            features: [
+              {
+                id: "feat-001",
+                reference_num: "ACME-F-1",
+                name: "Dark mode support",
+                workflow_status: { name: "Under consideration" },
+                assigned_to_user: { name: "Dave" },
+                tags: ["ux", "theme"],
+                updated_at: "2026-03-21T08:00:00.000Z",
+              },
+              {
+                id: "feat-002",
+                reference_num: "ACME-F-2",
+                name: "API rate limiting",
+                workflow_status: { name: "In development" },
+                assigned_to_user: null,
+                tags: [],
+                updated_at: "2026-03-20T16:00:00.000Z",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    }) as typeof fetch;
+
+    process.env.AHA_TOKEN = "aha-test-token";
+
+    try {
+      const items = await loadDashboardItems({
+        sources: [
+          {
+            id: "aha-main",
+            type: "aha",
+            enabled: true,
+            subdomain: "acme",
+            product: "ACME",
+          },
+        ],
+      });
+
+      expect(items).toHaveLength(2);
+      expect(items[0].id).toBe("ACME-F-1");
+      expect(items[0].itemType).toBe("feature");
+      expect(items[0].status).toBe("Under consideration");
+      expect(items[0].assignees).toEqual(["Dave"]);
+      expect(items[0].labels).toEqual(["ux", "theme"]);
+      expect(items[0].url).toBe("https://acme.aha.io/features/ACME-F-1");
+      expect(items[0].project).toBe("ACME");
+
+      expect(items[1].id).toBe("ACME-F-2");
+      expect(items[1].assignees).toEqual([]);
+      expect(items[1].labels).toEqual([]);
+    } finally {
+      delete process.env.AHA_TOKEN;
+    }
+  });
+
+  it("applies status filters on Jira items", async () => {
+    global.fetch = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          issues: [
+            {
+              key: "PROJ-201",
+              fields: {
+                summary: "Filtered issue",
+                status: { name: "Done" },
+                assignee: null,
+                labels: [],
+                priority: { name: "Low" },
+                issuetype: { name: "Task" },
+                updated: "2026-03-20T12:00:00.000Z",
+              },
+            },
+          ],
+          total: 1,
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    process.env.JIRA_USERNAME = "user@example.com";
+    process.env.JIRA_TOKEN = "jira-test-token";
+
+    try {
+      const items = await loadDashboardItems({
+        sources: [
+          {
+            id: "jira-filtered",
+            type: "jira",
+            enabled: true,
+            baseUrl: "https://mycompany.atlassian.net",
+            project: "PROJ",
+            statuses: ["In Progress"],
+          },
+        ],
+      });
+
+      // The item has status "Done" but we filter for "In Progress"
+      expect(items).toHaveLength(0);
+    } finally {
+      delete process.env.JIRA_USERNAME;
+      delete process.env.JIRA_TOKEN;
+    }
+  });
+
+  it("returns empty items when Jira credentials are missing", async () => {
+    delete process.env.JIRA_USERNAME;
+    delete process.env.JIRA_TOKEN;
+
+    const items = await loadDashboardItems({
+      sources: [
+        {
+          id: "jira-no-creds",
+          type: "jira",
+          enabled: true,
+          baseUrl: "https://mycompany.atlassian.net",
+          project: "PROJ",
+        },
+      ],
+    });
+
+    expect(items).toHaveLength(0);
+  });
+
+  it("returns empty items when AHA token is missing", async () => {
+    delete process.env.AHA_TOKEN;
+
+    const items = await loadDashboardItems({
+      sources: [
+        {
+          id: "aha-no-token",
+          type: "aha",
+          enabled: true,
+          subdomain: "acme",
+          product: "ACME",
+        },
+      ],
+    });
+
+    expect(items).toHaveLength(0);
+  });
+
+  it("continues loading other sources when one connector fails", async () => {
+    global.fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("atlassian.net")) {
+        return new Response("Service Unavailable", { status: 503 });
+      }
+      if (url.includes("/issues")) {
+        return new Response(
+          JSON.stringify([
+            {
+              number: 99,
+              title: "Surviving issue",
+              html_url: "https://github.com/org/repo/issues/99",
+              state: "open",
+              updated_at: "2026-03-22T10:00:00.000Z",
+              labels: [],
+              assignees: [],
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+      return new Response("Not found", { status: 404 });
+    }) as typeof fetch;
+
+    process.env.JIRA_USERNAME = "user@example.com";
+    process.env.JIRA_TOKEN = "jira-test-token";
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const items = await loadDashboardItems({
+        sources: [
+          {
+            id: "jira-broken",
+            type: "jira",
+            enabled: true,
+            baseUrl: "https://mycompany.atlassian.net",
+            project: "PROJ",
+          },
+          {
+            id: "github-ok",
+            type: "github",
+            enabled: true,
+            owner: "org",
+            repositories: ["repo"],
+          },
+        ],
+      });
+
+      // Jira fails but GitHub still returns its item
+      expect(items).toHaveLength(1);
+      expect(items[0].id).toBe("99");
+      expect(items[0].source).toBe("github-ok");
+
+      // Error was logged
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("jira-broken"),
+      );
+    } finally {
+      delete process.env.JIRA_USERNAME;
+      delete process.env.JIRA_TOKEN;
+      consoleSpy.mockRestore();
+    }
+  });
+
+  it("groups Jira and AHA items into their panel contexts", () => {
+    const items: DashboardItem[] = [
+      {
+        source: "jira-main",
+        project: "PROJ",
+        repositoryOrBoard: "PROJ",
+        id: "PROJ-101",
+        itemType: "issue",
+        title: "Jira issue",
+        url: "",
+        status: "open",
+        assignees: [],
+        labels: [],
+        updatedAt: "",
+        rawMetadata: {},
+      },
+      {
+        source: "aha-main",
+        project: "ACME",
+        repositoryOrBoard: "ACME",
+        id: "ACME-F-1",
+        itemType: "feature",
+        title: "AHA feature",
+        url: "",
+        status: "open",
+        assignees: [],
+        labels: [],
+        updatedAt: "",
+        rawMetadata: {},
+      },
+    ];
+
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-dashboard-jira-aha-ctx-"));
+    writeYamlFile(path.join(root, "dashboard.sources.yaml"), {
+      sources: [
+        { id: "jira-main", type: "jira", enabled: true, baseUrl: "https://x.atlassian.net", project: "PROJ" },
+        { id: "aha-main", type: "aha", enabled: true, subdomain: "acme", product: "ACME" },
+      ],
+    });
+
+    const contexts = buildDashboardPanelContexts(items, root);
+    expect(contexts.find((c) => c.id === "jira")?.items).toHaveLength(1);
+    expect(contexts.find((c) => c.id === "aha")?.items).toHaveLength(1);
+    expect(contexts.find((c) => c.id === "jira")?.items[0].id).toBe("PROJ-101");
+    expect(contexts.find((c) => c.id === "aha")?.items[0].id).toBe("ACME-F-1");
   });
 });

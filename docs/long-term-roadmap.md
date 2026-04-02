@@ -404,9 +404,11 @@ A slice is done only if all statements below are true:
 
 ## 7. Current known limitations
 
-- Dashboard source support is implemented only for GitHub today
-- GitHub dashboard filters now cover labels, assignees, statuses, and item types; source-level rate limit handling and workflow selection metadata are still pending
-- Jira and AHA are planned but not implemented
+- Dashboard source support is implemented for GitHub, Jira, and AHA
+- GitHub dashboard filters now cover labels, assignees, statuses, and item types; source-level rate limit handling is still pending
+- Jira connector supports project-based queries and explicit JQL; pagination uses `nextPageToken`; only basic auth (email + API token) is supported
+- AHA connector fetches product features; pagination beyond the initial page is not yet implemented
+- Connectors now fail independently: a broken source does not prevent other sources from loading
 - CLI verification is currently strongest for state capture, knowledge scan, and malformed config diagnostics; dashboard and scheduler happy paths are already covered through the SDK harness and should gain additional CLI smoke tests in later phases
 - Scheduler now persists history, but job enable/disable commands and richer history filtering are still pending
 - Scheduler currently evaluates cron schedules in UTC for deterministic behavior
@@ -421,8 +423,8 @@ The next engineer or agent should work in this order unless a new business prior
 1. Add `/jobs` filtering plus enable/disable commands
 2. Add retry and timeout handling to persisted scheduler history
 3. Add GitHub rate limit/error reporting and source-level workflow metadata
-4. Add Jira connector design and fixture-first implementation
-5. Add AHA connector after Jira normalization is stable
+4. Add AHA pagination for products with many features
+5. Add Jira advanced field mapping and ADF-to-Markdown rendering in detail view
 6. Revisit SDK negative-path verification if Pi exposes command failure results programmatically
 
 ## 9. Re-planning rule

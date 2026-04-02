@@ -41,4 +41,21 @@ describe("knowledge helpers", () => {
     expect(written).toContain("## Scope");
     expect(written).toContain("The scope is explicit.");
   });
+
+  it("handles titles with regex special characters safely", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-knowledge-regex-"));
+    const filePath = path.join(root, "guide.md");
+    fs.writeFileSync(filePath, `---\ntitle: Guide\n---\n\n# Guide\n`, "utf8");
+
+    const specialTitle = "Config (v2.0) [beta]";
+    writeClarificationSection(filePath, specialTitle, "First version.");
+    writeClarificationSection(filePath, specialTitle, "Updated version.");
+    const written = fs.readFileSync(filePath, "utf8");
+
+    // Should contain only one instance of the heading (replaced, not duplicated)
+    const headingCount = (written.match(/## Config \(v2\.0\) \[beta\]/g) || []).length;
+    expect(headingCount).toBe(1);
+    expect(written).toContain("Updated version.");
+    expect(written).not.toContain("First version.");
+  });
 });

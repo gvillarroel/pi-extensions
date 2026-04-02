@@ -3,6 +3,7 @@ import path from "node:path";
 import { CronExpressionParser } from "cron-parser";
 
 import type { JobDefinition, JobHistoryEntry, JobHistoryFile } from "./types.js";
+import { normalizePath, validateRecordFields } from "./paths.js";
 import { readYamlFile, writeYamlFile } from "./yaml.js";
 
 const DEFAULT_HISTORY_LIMIT = 100;
@@ -25,28 +26,11 @@ export function getJobHistoryPath(cwd = process.cwd()): string {
 }
 
 function normalizeHistoryEntry(value: unknown): JobHistoryEntry | undefined {
-  if (!value || typeof value !== "object") {
-    return undefined;
-  }
-
-  const entry = value as Record<string, unknown>;
-  if (
-    typeof entry.jobId !== "string" ||
-    (entry.status !== "passed" && entry.status !== "failed" && entry.status !== "skipped") ||
-    typeof entry.startedAt !== "string" ||
-    typeof entry.endedAt !== "string" ||
-    typeof entry.summary !== "string"
-  ) {
-    return undefined;
-  }
-
-  return {
-    jobId: entry.jobId,
-    status: entry.status,
-    startedAt: entry.startedAt,
-    endedAt: entry.endedAt,
-    summary: entry.summary,
-  };
+  return validateRecordFields<JobHistoryEntry>(
+    value,
+    ["jobId", "startedAt", "endedAt", "summary"],
+    { status: ["passed", "failed", "skipped"] },
+  );
 }
 
 export function loadJobHistory(cwd = process.cwd()): JobHistoryEntry[] {
@@ -75,12 +59,13 @@ export function persistJobHistory(
 }
 
 export function hydrateJobRuntimeState(state: JobRuntimeState, cwd = process.cwd()): JobRuntimeState {
-  if (state.historyCwd === cwd && state.history.length > 0) {
+  const resolved = normalizePath(cwd);
+  if (state.historyCwd === resolved && state.history.length > 0) {
     return state;
   }
 
   state.history = loadJobHistory(cwd);
-  state.historyCwd = cwd;
+  state.historyCwd = resolved;
   return state;
 }
 
@@ -93,7 +78,7 @@ export function recordJobHistoryEntry(
   hydrateJobRuntimeState(state, cwd);
   state.history.unshift(entry);
   state.history = persistJobHistory(state.history, cwd, limit);
-  state.historyCwd = cwd;
+  state.historyCwd = normalizePath(cwd);
   return state.history;
 }
 

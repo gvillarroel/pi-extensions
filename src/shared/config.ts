@@ -1,6 +1,12 @@
 import path from "node:path";
 
-import type { DashboardConfigFile, GatesConfigFile, JobsConfigFile, WorkflowConfigFile } from "./types.js";
+import type {
+  BashWorkflowDefinition,
+  DashboardConfigFile,
+  GatesConfigFile,
+  JobsConfigFile,
+  WorkflowConfigFile,
+} from "./types.js";
 import {
   type ConfigValidationIssue,
   validateDashboardConfig,
@@ -38,6 +44,34 @@ const validators: Record<string, ConfigValidator> = {
   "gates.yaml": validateGatesConfig,
   "jobs.yaml": validateJobsConfig,
 };
+
+function compileBashWorkflow(workflow: BashWorkflowDefinition) {
+  const commands = Array.isArray(workflow.bash) ? workflow.bash : [workflow.bash];
+  return {
+    id: workflow.id,
+    label: workflow.label,
+    description: workflow.description,
+    steps: commands.map((command, index) => ({
+      id: `bash-${index + 1}`,
+      type: "script" as const,
+      run: command,
+    })),
+  };
+}
+
+function normalizeKnownConfig<T extends object>(filename: string, value: T): T {
+  if (filename !== "workflows.yaml") {
+    return value;
+  }
+
+  const workflowValue = value as WorkflowConfigFile;
+  const compiledWorkflows = (workflowValue.bashWorkflows ?? []).map(compileBashWorkflow);
+
+  return {
+    ...workflowValue,
+    workflows: [...(workflowValue.workflows ?? []), ...compiledWorkflows],
+  } as T;
+}
 
 function mergeValues(globalValue: unknown, localValue: unknown): unknown {
   if (Array.isArray(localValue)) {
@@ -102,7 +136,7 @@ export function loadMergedYamlConfig<T extends object>(
   validateKnownConfig(filename, globalFile, globalValue);
   validateKnownConfig(filename, localFile, localValue);
 
-  return mergeValues(globalValue, localValue) as T;
+  return normalizeKnownConfig(filename, mergeValues(globalValue, localValue) as T);
 }
 
 export type KnownConfigFile =

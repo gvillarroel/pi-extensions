@@ -6,7 +6,7 @@ import {
   loadKnowledgeDocuments,
   writeClarificationSection,
 } from "../src/shared/knowledge.js";
-import type { ExtensionContext } from "../src/shared/types.js";
+import type { ExtensionContext, PiExtensionHost } from "../src/shared/types.js";
 
 const STATUS_SLOT = "knowledge";
 
@@ -47,9 +47,9 @@ function renderCandidates(cwd?: string): string {
     .join("\n");
 }
 
-export default function registerKnowledgeDistiller(pi: any) {
+export default function registerKnowledgeDistiller(pi: PiExtensionHost) {
   // Next expected extension point: add richer ambiguity heuristics without changing the command contract.
-  pi.registerCommand?.("knowledge_scan", {
+  pi.registerCommand("knowledge_scan", {
     description: "Scan markdown knowledge roots for unclear concepts.",
     handler: async (_args: string, ctx: ExtensionContext) => {
       const report = renderCandidates(ctx.cwd);
@@ -60,7 +60,7 @@ export default function registerKnowledgeDistiller(pi: any) {
     },
   });
 
-  pi.registerCommand?.("knowledge_write", {
+  pi.registerCommand("knowledge_write", {
     description: "Write a clarification section using /knowledge_write <title> <targetFile>.",
     handler: async (args: string, ctx: ExtensionContext) => {
       const [title, targetFile, ...bodyParts] = args.split(/\s+/);
@@ -77,7 +77,7 @@ export default function registerKnowledgeDistiller(pi: any) {
     },
   });
 
-  pi.registerTool?.({
+  pi.registerTool({
     name: "knowledge_list_candidates",
     description: "List unclear concepts discovered in markdown knowledge files.",
     parameters: {

@@ -21,3 +21,31 @@ sources:
     defaultWorkflowId: github-triage
     allowedWorkflowIds:
       - github-triage
+
+  - id: jira-engineering
+    type: jira
+    enabled: true
+    baseUrl: https://mycompany.atlassian.net
+    project: ENG
+    # usernameEnvVar: JIRA_USERNAME  # defaults to JIRA_USERNAME
+    # tokenEnvVar: JIRA_TOKEN        # defaults to JIRA_TOKEN
+    # jql: "project = ENG AND status != Done"  # optional explicit JQL override
+    statuses:
+      - In Progress
+      - To Do
+    assignees:
+      - alice
+    maxResults: 50
+    defaultWorkflowId: jira-triage
+
+  - id: aha-product
+    type: aha
+    enabled: true
+    subdomain: acme
+    product: ACME
+    # tokenEnvVar: AHA_TOKEN  # defaults to AHA_TOKEN
+    maxResults: 100
+    statuses:
+      - Under consideration
+      - In development
+    defaultWorkflowId: aha-review

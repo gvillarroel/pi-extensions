@@ -3,6 +3,7 @@ import type {
   ExtensionContext,
   JobDefinition,
   JobsConfigFile,
+  PiExtensionHost,
   WorkflowConfigFile,
 } from "../src/shared/types.js";
 import {
@@ -119,9 +120,9 @@ export function renderJobStatus(cwd?: string, state: JobRuntimeState = scheduler
     .join("\n");
 }
 
-export default function registerJobScheduler(pi: any) {
+export default function registerJobScheduler(pi: PiExtensionHost) {
   // Next expected extension point: replace the polling strategy with a persistent scheduler when Pi exposes a stable background API.
-  pi.registerCommand?.("jobs", {
+  pi.registerCommand("jobs", {
     description: "List scheduled jobs and their next run times.",
     handler: async (_args: string, ctx: ExtensionContext) => {
       const message = renderJobStatus(ctx.cwd);
@@ -131,7 +132,7 @@ export default function registerJobScheduler(pi: any) {
     },
   });
 
-  pi.registerCommand?.("job_run", {
+  pi.registerCommand("job_run", {
     description: "Run a configured job immediately using /job_run <jobId>.",
     handler: async (args: string, ctx: ExtensionContext) => {
       const jobId = args.trim();
@@ -146,7 +147,7 @@ export default function registerJobScheduler(pi: any) {
     },
   });
 
-  pi.registerCommand?.("job_history", {
+  pi.registerCommand("job_history", {
     description: "Show recent persisted job history using /job_history [jobId].",
     handler: async (args: string, ctx: ExtensionContext) => {
       const jobId = args.trim() || undefined;
@@ -157,7 +158,7 @@ export default function registerJobScheduler(pi: any) {
     },
   });
 
-  pi.registerTool?.({
+  pi.registerTool({
     name: "jobs_list",
     description: "List jobs and next execution times from YAML configuration.",
     parameters: {

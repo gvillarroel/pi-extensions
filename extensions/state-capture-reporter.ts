@@ -1,3 +1,6 @@
+import { asRecord } from "../src/shared/paths.js";
+import type { ExtensionContext, PiExtensionHost } from "../src/shared/types.js";
+
 const EVENT_NAMES = [
   "resources_discover",
   "session_directory",
@@ -33,11 +36,6 @@ const EVENT_NAMES = [
 
 type EventName = (typeof EVENT_NAMES)[number];
 type UnknownPayload = Record<string, unknown>;
-
-function asRecord(value: unknown): UnknownPayload | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  return value as UnknownPayload;
-}
 
 function pickString(value: unknown): string | undefined {
   if (typeof value === "string") {
@@ -105,18 +103,18 @@ function summarizePayload(payload: UnknownPayload | undefined): string {
   return `keys=${keys.slice(0, 8).join(", ")}`;
 }
 
-function logEvent(eventName: string, payload: UnknownPayload | undefined, ctx: any) {
+function logEvent(eventName: string, payload: UnknownPayload | undefined, ctx: ExtensionContext | undefined) {
   const message = `[state-capture] ${eventName} | ${summarizePayload(payload)}`;
   console.log(message);
-  if (ctx?.ui?.setStatus) ctx.ui.setStatus("state-capture", message);
+  ctx?.ui?.setStatus?.("state-capture", message);
 }
 
 function safeRegister(
-  pi: any,
+  pi: PiExtensionHost,
   eventName: EventName,
   onSeen: (eventName: EventName) => void,
 ) {
-  pi.on(eventName, (event: unknown, ctx: unknown) => {
+  pi.on(eventName, (event: unknown, ctx: ExtensionContext) => {
     onSeen(eventName);
     logEvent(eventName, asRecord(event), ctx);
 
@@ -137,7 +135,7 @@ function safeRegister(
   });
 }
 
-export default function registerStateCaptureReporter(pi: any) {
+export default function registerStateCaptureReporter(pi: PiExtensionHost) {
   const registered = new Set<string>();
   const seen = new Set<string>();
 
@@ -146,14 +144,14 @@ export default function registerStateCaptureReporter(pi: any) {
     registered.add(eventName);
   }
 
-  pi.registerCommand?.("captured_states", {
+  pi.registerCommand("captured_states", {
     description: "List supported events and the ones that were already observed",
-    handler: async (_args: string, ctx: any) => {
+    handler: async (_args: string, ctx: ExtensionContext) => {
       const message =
         `Registered events (${registered.size}): ${Array.from(registered).join(", ")}\n` +
         `Observed events (${seen.size}): ${Array.from(seen).join(", ") || "none"}`;
 
-      if (ctx?.ui?.notify) ctx.ui.notify("Captured event report written to the console", "info");
+      ctx?.ui?.notify?.("Captured event report written to the console", "info");
       console.log(message);
     },
   });

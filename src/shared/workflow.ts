@@ -16,7 +16,9 @@ import { getByPath, interpolateTemplate } from "./paths.js";
 
 const execFileAsync = promisify(execFile);
 
-async function runShellCommand(command: string, context: AnyRecord): Promise<string> {
+const DEFAULT_TIMEOUT_MS = 120_000;
+
+async function runShellCommand(command: string, context: AnyRecord, timeoutMs?: number): Promise<string> {
   const rendered = interpolateTemplate(command, context);
   const shell = process.platform === "win32" ? "powershell" : "bash";
   const args =
@@ -26,6 +28,7 @@ async function runShellCommand(command: string, context: AnyRecord): Promise<str
   const { stdout, stderr } = await execFileAsync(shell, args, {
     cwd: typeof context.cwd === "string" ? context.cwd : process.cwd(),
     env: process.env,
+    timeout: timeoutMs ?? (typeof context.timeoutMs === "number" ? context.timeoutMs : DEFAULT_TIMEOUT_MS),
   });
 
   return `${stdout}${stderr}`.trim();

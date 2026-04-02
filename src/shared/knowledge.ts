@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { KnowledgeCandidate, KnowledgeDocument, KnowledgeSignal } from "./types.js";
+import { escapeRegExp } from "./paths.js";
 import { parseFrontmatter, renderFrontmatter } from "./yaml.js";
 
 function walkMarkdownFiles(directory: string): string[] {
@@ -98,7 +99,7 @@ export function writeClarificationSection(targetFile: string, title: string, bod
   const section = `${heading}\n\n${trimmedBody}\n`;
   const bodyWithoutTrailingSpace = parsed.body.trimEnd();
   const nextBody = bodyWithoutTrailingSpace.includes(heading)
-    ? bodyWithoutTrailingSpace.replace(new RegExp(`## ${title}[\\s\\S]*?(?=\\n## |$)`), section.trimEnd())
+    ? bodyWithoutTrailingSpace.replace(new RegExp(`## ${escapeRegExp(title)}[\\s\\S]*?(?=\\n## |$)`), section.trimEnd())
     : `${bodyWithoutTrailingSpace}${bodyWithoutTrailingSpace ? "\n\n" : ""}${section}`.trimEnd();
 
   const frontmatter = {

@@ -58,7 +58,7 @@ export interface DashboardItem {
   project: string;
   repositoryOrBoard: string;
   id: string;
-  itemType: "issue" | "discussion";
+  itemType: "issue" | "discussion" | "feature";
   title: string;
   url: string;
   status: string;
@@ -98,6 +98,13 @@ export interface WorkflowDefinition {
   postHooks?: HookDefinition[];
 }
 
+export interface BashWorkflowDefinition {
+  id: string;
+  label: string;
+  description?: string;
+  bash: string | string[];
+}
+
 export interface ExecutionArtifact {
   type: string;
   label: string;
@@ -132,7 +139,7 @@ export interface WorkflowExecutionResult {
 
 export interface DashboardSourceDefinition {
   id: string;
-  type: "github" | string;
+  type: "github" | "jira" | "aha" | string;
   enabled?: boolean;
   owner?: string;
   repositories?: string[];
@@ -141,10 +148,19 @@ export interface DashboardSourceDefinition {
   labels?: string[];
   assignees?: string[];
   statuses?: string[];
-  itemTypes?: Array<"issue" | "discussion">;
+  itemTypes?: Array<"issue" | "discussion" | "feature">;
   tokenEnvVar?: string;
   defaultWorkflowId?: string;
   allowedWorkflowIds?: string[];
+  // Jira-specific fields
+  baseUrl?: string;
+  jql?: string;
+  project?: string;
+  usernameEnvVar?: string;
+  maxResults?: number;
+  // AHA-specific fields
+  product?: string;
+  subdomain?: string;
 }
 
 export interface DashboardConfigFile {
@@ -167,6 +183,7 @@ export interface DashboardRunHistoryFile {
 
 export interface WorkflowConfigFile {
   workflows?: WorkflowDefinition[];
+  bashWorkflows?: BashWorkflowDefinition[];
 }
 
 export interface GatesConfigFile {
@@ -224,4 +241,35 @@ export interface KnowledgeCandidate {
   path: string;
   title: string;
   signals: KnowledgeSignal[];
+}
+
+export interface ToolParameter {
+  type: string;
+  properties?: Record<string, unknown>;
+  additionalProperties?: boolean;
+  required?: string[];
+}
+
+export interface ToolResult {
+  content: Array<{ type: string; text: string }>;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: ToolParameter;
+  execute: (...args: unknown[]) => Promise<ToolResult>;
+}
+
+export interface CommandDefinition {
+  description: string;
+  handler: (args: string, ctx: ExtensionContext) => Promise<void> | void;
+}
+
+export type EventHandler = (event: unknown, ctx: ExtensionContext) => unknown;
+
+export interface PiExtensionHost {
+  on(event: string, handler: EventHandler): void;
+  registerCommand(name: string, definition: CommandDefinition): void;
+  registerTool(definition: ToolDefinition): void;
 }
