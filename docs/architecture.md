@@ -1,5 +1,11 @@
 # Architecture Overview
 
+Related docs:
+
+- [dashboard.md](./dashboard.md)
+- [long-term-roadmap.md](./long-term-roadmap.md)
+- [README.md](./README.md)
+
 ## Design principles
 
 - Prefer simple YAML configuration over hidden code paths.

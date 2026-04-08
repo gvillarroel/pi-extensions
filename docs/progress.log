@@ -1,3 +1,8 @@
+Historical progress log.
+
+Use this file as dated implementation history, not as the current source of truth.
+Current behavior lives in [README.md](./README.md), [architecture.md](./architecture.md), and [dashboard.md](./dashboard.md).
+
 2026-03-18
 
 Completed

@@ -1,5 +1,11 @@
 # Long-Term Implementation and Verification Roadmap
 
+Status note:
+
+- this file mixes current baseline context with remaining work
+- treat completed items as historical context
+- use [README.md](./README.md), [architecture.md](./architecture.md), and [dashboard.md](./dashboard.md) for current behavior
+
 This document is the operating plan for evolving this repository without needing a fresh product prompt.
 It is intentionally explicit about outcomes, sequencing, validation, and exit criteria so future work can continue from here directly.
 

@@ -1,5 +1,11 @@
 # Dashboard Extension
 
+Related docs:
+
+- [README.md](./README.md)
+- [architecture.md](./architecture.md)
+- [long-term-roadmap.md](./long-term-roadmap.md)
+
 The dashboard extension turns Pi into a work triage surface. It loads items from external systems, presents them in a navigable interface, and lets you run workflows against selected items without leaving the agent session.
 
 Entry point: `extensions/dashboard.ts`
